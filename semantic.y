@@ -17,6 +17,9 @@
   int fun_idx = -1;
   int fcall_idx = -1;
   int var_type;
+  int ret_num = 0;
+  int block_level = 0;
+  
 %}
 
 %union {
@@ -73,6 +76,7 @@ function_list
 function
   : _TYPE _ID
       {
+      	block_level = 0;
         fun_idx = lookup_symbol($2, FUN);
         if(fun_idx == NO_INDEX)
           fun_idx = insert_symbol($2, FUN, $1, NO_ATR, NO_ATR);
@@ -83,6 +87,9 @@ function
       {
         clear_symbols(fun_idx + 1);
         var_num = 0;
+        if(get_type(fun_idx)!=VOID && ret_num==0)
+        	warn("non-void function '%s' requires return statement", get_name(fun_idx));
+        ret_num = 0;
       }
   ;
 
@@ -121,17 +128,23 @@ variable
   
 variables
   : _ID {
-        if(lookup_symbol($1, VAR|PAR) == NO_INDEX)
-           insert_symbol($1, VAR, var_type, ++var_num, NO_ATR);
-        else 
+  		int idx = lookup_symbol($1, VAR|PAR);
+        if(idx == NO_INDEX)
+           insert_symbol($1, VAR, var_type, ++var_num, block_level);
+        else if(get_atr2(idx) == block_level)
            err("redefinition of '%s'", $1);
+        else
+        	insert_symbol($1, VAR, var_type, ++var_num, block_level);
         }
   | variables _COMMA _ID
   		{
-        if(lookup_symbol($3, VAR|PAR) == NO_INDEX)
-           insert_symbol($3, VAR, var_type, ++var_num, NO_ATR);
-        else 
+  		int idx = lookup_symbol($3, VAR|PAR);
+        if(idx == NO_INDEX)
+           insert_symbol($3, VAR, var_type, ++var_num, block_level);
+        else if(get_atr2(idx) == block_level)
            err("redefinition of '%s'", $3);
+        else
+           insert_symbol($3, VAR, var_type, ++var_num, block_level);
       }
   ;
 
@@ -177,10 +190,10 @@ basicfor_statement
 maybestep
   : /*empty*/
   | _STEP literal
-  				{
-  					if(var_type != get_type($2))
-  						err("incompatible types in step clause of basic for statement");
-  				}
+  		{
+  			if(var_type != get_type($2))
+				err("incompatible types in step clause of basic for statement");
+  		}
   ;
   
 postincrement_statement
@@ -192,7 +205,7 @@ postincrement_statement
   ;
   
 compound_statement
-  : _LBRACKET statement_list _RBRACKET
+  : _LBRACKET { block_level++; $<i>$ =  get_last_element();} variable_list statement_list { clear_symbols($<i>2 + 1); block_level--; } _RBRACKET
   ;
   
 assignment_statement
@@ -299,7 +312,7 @@ if_part
 log_exp
   : rel_exp
   | log_exp _LOGOP rel_exp
-  		{
+  	  {
         if(get_type($1) != get_type($3))
           err("invalid operands: logical operator");
       }
@@ -311,18 +324,31 @@ rel_exp
         if(get_type($1) != get_type($3))
           err("invalid operands: relational operator");
       }
+  | _LPAREN rel_exp _RPAREN
+  	  {
+  	  	$$ = $2;
+  	  }
   ;
 
 return_statement
-  : _RETURN num_exp _SEMICOLON
+  : _RETURN _SEMICOLON
+  		{
+  			ret_num++;
+  			if(get_type(fun_idx)!=VOID)
+  				warn("non-void function '%s' must return something", get_name(fun_idx));
+  		}
+  | _RETURN num_exp _SEMICOLON
       {
-        if(get_type(fun_idx) != get_type($2))
+      	ret_num++;
+      	if(get_type(fun_idx) == VOID)
+      		err("void function must not return anything");
+        else if(get_type(fun_idx) != get_type($2))
           err("incompatible types in return");
       }
   ;
   
 dowhile_statement
-  : _DO statement _WHILE _LPAREN rel_exp _RPAREN _SEMICOLON
+  : _DO statement _WHILE _LPAREN log_exp _RPAREN _SEMICOLON
   ;
 
 %%
