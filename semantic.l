@@ -27,6 +27,12 @@
 "to"				 { yylval.i = TO; return _DIRECTION; }
 "downto"			 { yylval.i = DOWNTO; return _DIRECTION; }
 
+"switch"			 { return _SWITCH; }
+"case"				 { return _CASE; }
+"break"				 { return _BREAK; }
+"default"			 { return _DEFAULT; }
+":"					 { return _COLON; }
+
 "("                  { return _LPAREN; }
 ")"                  { return _RPAREN; }
 "{"                  { return _LBRACKET; }

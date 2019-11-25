@@ -19,6 +19,9 @@
   int var_type;
   int ret_num = 0;
   int block_level = 0;
+  int switch_literals[200];
+  int case_num = 0;
+  int switch_type;
   
 %}
 
@@ -47,6 +50,11 @@
 %token _WHILE
 %token _COMMA
 %token _PLUSPLUS
+%token _SWITCH
+%token _CASE
+%token _BREAK
+%token _DEFAULT
+%token _COLON
 
 %token _FOR
 %token _STEP
@@ -161,8 +169,58 @@ statement
   | dowhile_statement
   | postincrement_statement
   | basicfor_statement
+  | switch_statement
   ;
   
+switch_statement
+  : _SWITCH _LPAREN _ID 
+  	{
+  		int idx = lookup_symbol($3, VAR|PAR);
+  	
+  		if(idx == NO_INDEX)
+  			err("'%s' undeclared", $3);
+  		switch_type = get_type(idx);
+  		case_num = 0;  		
+  	}
+  _RPAREN _LBRACKET cases maybedefault _RBRACKET
+  ; 
+  
+cases
+  : case
+  | cases case
+  ;
+  
+case
+  : _CASE literal
+  {
+  	if(get_type($2)!=switch_type)
+  		err("incompatible type in case clause");
+  	
+  	switch_literals[case_num] = atoi(get_name($2));
+  	
+  	if(case_num > 0){
+  		for(int i=case_num-1; i>=0; --i){
+  			if(switch_literals[i] == switch_literals[case_num])
+  				err("duplicate switch case");
+  		}
+  	}
+  	
+  	case_num++;
+  	
+  }
+  _COLON statement maybebreak
+  ;
+  
+maybebreak
+  : /*empty*/
+  | _BREAK _SEMICOLON
+  ;
+  
+maybedefault
+  : /*empty*/
+  | _DEFAULT _COLON statement
+  ;
+ 
 basicfor_statement
   : _FOR _ID _ASSIGN literal _DIRECTION literal
   {

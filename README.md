@@ -114,6 +114,7 @@ a = b = c = d = e + 5;
 |  bez return  |   OK    |  warning		|
 
 10. Definicija promenljivih u ugnježdenim blokovima.
+11. SWITCH iskaz. (Ne sme ugnježdeni SWITCH iskaz - SWITCH u SWITCH-u)
 
 
 
