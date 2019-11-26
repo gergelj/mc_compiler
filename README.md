@@ -115,12 +115,11 @@ a = b = c = d = e + 5;
 
 10. Definicija promenljivih u ugnježdenim blokovima.
 11. SWITCH iskaz. (Ne sme ugnježdeni SWITCH iskaz - SWITCH u SWITCH-u)
+12. FOR iskaz.
 
+```c
+"for" "(" <type> <id1> "=" <lit> ";" <relation> ";" <id2> "++" ")"
+     <stmt>
+```
 
-
-
-
-
-
-
-
+\<id1\> treba da bude lokalna promenljiva za for iskaz.

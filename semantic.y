@@ -22,6 +22,7 @@
   int switch_literals[200];
   int case_num = 0;
   int switch_type;
+  int should_block_up = 1; // indikator u compound_statement
   
 %}
 
@@ -170,8 +171,52 @@ statement
   | postincrement_statement
   | basicfor_statement
   | switch_statement
+  | for_statement
   ;
-  
+
+for_statement
+  : _FOR _LPAREN _TYPE _ID _ASSIGN literal 
+  {
+  		block_level++;
+  		should_block_up = 0;
+  		$<i>$ = get_last_element();
+  		
+  		int idx = lookup_symbol($4, VAR|PAR);
+  		
+  		if($3 == VOID)
+  			err("variable '%s' cannot be void");
+  		else if(idx==NO_INDEX)
+  			insert_symbol($4, VAR, $3, ++var_num, block_level);
+  		else if(get_atr2(idx) == block_level)
+  			err("redefinition of '%s'", $4);
+  		else
+  			insert_symbol($4, VAR, $3, ++var_num, block_level);
+  			
+  		if($3 != get_type($6))
+  			err("incompatible types in for clause");	
+  }
+  _SEMICOLON rel_exp _SEMICOLON _ID 
+  {
+  		int idx = lookup_symbol($11, VAR|PAR);
+  		
+  		if(idx == NO_INDEX)
+  			err("'%s' undeclared", $11);
+  		else if(idx != lookup_symbol($4, VAR|PAR))
+  			err("not same variables in for clause");
+  }
+  _PLUSPLUS _RPAREN statement
+  {
+  		should_block_up = 1;
+
+  		clear_symbols($<i>7 + 1);
+  		block_level--;
+  }
+  ;
+
+
+
+
+
 switch_statement
   : _SWITCH _LPAREN _ID 
   	{
@@ -263,7 +308,24 @@ postincrement_statement
   ;
   
 compound_statement
-  : _LBRACKET { block_level++; $<i>$ =  get_last_element();} variable_list statement_list { clear_symbols($<i>2 + 1); block_level--; } _RBRACKET
+  : _LBRACKET 
+  {
+  	$<i>$ = should_block_up;
+  	if(should_block_up)
+  		block_level++;
+  	
+  	should_block_up = 1;
+  }
+  {
+  	$<i>$ =  get_last_element();
+  }
+  variable_list statement_list
+  {
+  	clear_symbols($<i>3 + 1);
+  	if($<i>2 == 1)
+  		block_level--;
+  }
+  _RBRACKET
   ;
   
 assignment_statement
